@@ -1,0 +1,93 @@
+# HyperOffice — Next.js static export (Apache)
+
+<IfModule mod_mime.c>
+  AddType text/css .css
+  AddType application/javascript .js
+  AddType application/json .json
+  AddType image/svg+xml .svg
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # --- Static assets: never rewrite to HTML ---
+  RewriteRule ^next-static/ - [L]
+
+  RewriteRule ^(icons|legacy|bill|factor|test|preview|new)(/|$) - [L]
+
+  RewriteRule ^(manifest\.json|sw\.js|pwa-bootstrap\.js|robots\.txt|sitemap\.xml)$ - [L]
+
+  # --- Root only: saved locale cookie → /{locale}/ ---
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:Cookie} (?:^|;\s*)hyperoffice-locale=(en|es|fr|de|zh|ar|tr|fa)(?:;|$)
+  RewriteRule ^$ /%1/ [R=302,L]
+
+  # --- Root: Cloudflare GeoIP (VPN/country) — needs CF-IPCountry header ---
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(IR|AF)$
+  RewriteRule ^$ /fa/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(SA|AE|EG|IQ|JO|KW|LB|OM|QA|BH|YE|SY|LY|MA|TN|DZ|SD)$
+  RewriteRule ^$ /ar/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(TR|CY)$
+  RewriteRule ^$ /tr/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(CN|TW|HK|MO|SG)$
+  RewriteRule ^$ /zh/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(ES|MX|AR|CO|CL|PE|VE|EC|GT|CU|BO|DO|HN|PY|SV|NI|CR|PA|UY)$
+  RewriteRule ^$ /es/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(FR|BE|LU|MC)$
+  RewriteRule ^$ /fr/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(DE|AT|LI|CH)$
+  RewriteRule ^$ /de/ [R=302,L]
+
+  RewriteCond %{REQUEST_URI} ^/?$
+  RewriteCond %{HTTP:CF-IPCountry} ^(US|GB|CA|AU|NZ|IE|IN|ZA|NG|PH|MY|PK)$
+  RewriteRule ^$ /en/ [R=302,L]
+
+  # Other countries: serve index.html — client-side GeoIP script runs next
+
+  RewriteCond %{REQUEST_URI} \.(css|js|json|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|map|txt|xml)$ [NC]
+  RewriteRule ^ - [L]
+
+  # --- Legacy Persian URLs → /fa/... ---
+  RewriteRule ^tarahi-site/?$ /fa/tarahi-site [R=301,L]
+  RewriteRule ^tarahi-forooshgah/?$ /fa/tarahi-forooshgah [R=301,L]
+  RewriteRule ^seo-site/?$ /fa/seo-site [R=301,L]
+
+  # --- Clean URLs → .html pages ---
+  RewriteRule ^index\.html$ - [L]
+
+  # Directory without index (e.g. /fa/) → sibling .html (fa.html)
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html !-f
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.*?)/?$ $1.html [L]
+
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.+?)/?$ $1.html [L]
+
+  # --- 404 for unknown routes ---
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /404.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
